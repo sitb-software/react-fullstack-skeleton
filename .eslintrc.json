@@ -846,15 +846,6 @@
       }
     ],
     "react/react-in-jsx-scope": 2,
-    "react/require-extension": [
-      2,
-      {
-        "extensions": [
-          ".js",
-          ".jsx"
-        ]
-      }
-    ],
     "react/require-render-return": 2,
     "react/self-closing-comp": 2,
     "react/sort-comp": [
@@ -902,14 +893,6 @@
         "callbacksLast": true,
         "ignoreCase": false,
         "requiredFirst": true
-      }
-    ],
-    "react/wrap-multilines": [
-      2,
-      {
-        "declaration": true,
-        "assignment": true,
-        "return": true
       }
     ],
     "react/jsx-boolean-value": [
@@ -996,7 +979,15 @@
       "always"
     ],
     "react/jsx-uses-react": 2,
-    "react/jsx-uses-vars": 2
+    "react/jsx-uses-vars": 2,
+    "react/jsx-wrap-multilines": [
+      2,
+      {
+        "declaration": true,
+        "assignment": true,
+        "return": true
+      }
+    ]
     /*********************************/
   }
 }
