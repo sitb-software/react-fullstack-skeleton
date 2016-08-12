@@ -1,49 +1,127 @@
-/*eslint-disable no-var */
-'use strict';
-require('babel/register');
-var path = require('path');
+import webpack from 'webpack';
+import path from 'path';
+import HtmlWebpackPlugin from 'html-webpack-plugin';
+import pkg from './package.json';
 
-var args = require('minimist')(process.argv.slice(2));
+export default function (options) {
 
-// List of allowed environments
-var allowedEnvs = ['dev', 'dist', 'test'];
+  let CSS_LOADER = options.debug ? 'style-loader!css-loader' : 'style-loader!css-loader?minimize';
 
-// Set the correct environment
-var env;
-if (args._.length > 0 && args._.indexOf('start') !== -1) {
-    env = 'test';
-} else if (args.env) {
-    env = args.env;
-} else {
-    env = 'dev';
-}
+  let buildDir = `build/${pkg.name}-${pkg.version}`;
 
-// Get available configurations
-var configs = {
-    base: require(path.join(__dirname, 'webpack/base.config')),
-    dev: require(path.join(__dirname, 'webpack/dev.config')),
-    dist: require(path.join(__dirname, 'webpack/dist.config'))
+  let defaultConfig = {
+    stats: {
+      colors: true,
+      reasons: options.debug
+    },
+    cache: false,
+    debug: options.debug,
+    resolve: {
+      extensions: ['', '.webpack.js', '.web.js', '.js', '.jsx']
+    }
+  };
+
+  let entry = {};
+  let app = [];
+  let plugins = [];
+  app.push('./src/index.web.js');
+
+  plugins.push(new HtmlWebpackPlugin({
+    title: options.htmlTitle,
+    // favicon: './resources/images/favicon.ico',
+    template: './src/templates/index.template.html',
+    inject: true
+  }));
+
+  plugins.push(new webpack.optimize.CommonsChunkPlugin({
+    name: 'commons',
+    filename: 'commons.js'
+  }));
+
+  plugins.push(new webpack.DefinePlugin({
+    'process.env.NODE_ENV': JSON.stringify(options.debug ? 'development' : 'production')
+  }));
+
+  if (options.debug) {
+    app.push(`webpack-dev-server/client?http://${options.host}:${options.port}`);
+    app.push('webpack/hot/only-dev-server');
+
+    plugins.push(new webpack.HotModuleReplacementPlugin());
+    plugins.push(new webpack.NoErrorsPlugin());
+  } else {
+    plugins.push(new webpack.optimize.DedupePlugin());
+    plugins.push(new webpack.optimize.OccurrenceOrderPlugin());
+    plugins.push(new webpack.optimize.UglifyJsPlugin({
+      compress: {warnings: false},
+      comments: false,
+      sourceMap: false,
+      mangle: true,
+      minimize: true
+    }));
+
+    plugins.push(new webpack.optimize.AggressiveMergingPlugin({
+      minSizeReduce: 1.5,
+      moveToParents: true
+    }));
+
+    plugins.push(new webpack.optimize.LimitChunkCountPlugin({
+      maxChunks: 300
+    }));
+  }
+
+  entry.app = app;
+  entry.style = ['./src/styles/index.less'];
+
+  return Object.assign({}, defaultConfig, {
+    entry,
+
+    output: {
+      filename: '[name].bundle.js',
+      chunkFilename: '[chunkHash].bundle.js',
+      path: path.join(__dirname, buildDir)
+    },
+
+    devtool: options.debug ? 'source-map' : 'cheap-module-source-map',
+
+    plugins,
+
+    module: {
+      preLoaders: [
+        {
+          test: /\.(js|jsx|es6)$/,
+          include: path.resolve(__dirname, 'src'),
+          loader: 'eslint-loader'
+        }
+      ],
+      loaders: [{
+        test: /\.(js|jsx|es6)$/,
+        include: path.resolve(__dirname, 'src'),
+        loaders: ['react-hot', 'babel']
+      }, {
+        test: /\.css$/,
+        loader: CSS_LOADER
+      }, {
+        test: /\.less$/,
+        include: path.join(__dirname, 'src', 'styles'),
+        loader: `${CSS_LOADER}!less-loader`
+      }, {
+        test: /\.gif/,
+        loader: 'url-loader?limit=10000&mimetype=image/gif'
+      }, {
+        test: /\.jpg/,
+        loader: 'url-loader?limit=10000&mimetype=image/jpg'
+      }, {
+        test: /\.png/,
+        loader: 'url-loader?limit=10000&mimetype=image/png'
+      }, {
+        test: /\.svg/,
+        loader: 'url-loader?limit=10000&mimetype=image/svg+xml'
+      }, {
+        test: /\.(woff|eot|ttf)/,
+        loader: 'file-loader'
+      }]
+    }
+  });
+
 };
 
-/**
- * Get an allowed environment
- * @param  {String}  env
- * @return {String}
- */
-function getValidEnv(env) {
-    var isValid = env && env.length > 0 && allowedEnvs.indexOf(env) !== -1;
-    return isValid ? env : 'dev';
-}
-
-
-/**
- * Build the webpack configuration
- * @param  {String} env Environment to use
- * @return {Object} Webpack config
- */
-function buildConfig(env) {
-    var usedEnv = getValidEnv(env);
-    return configs[usedEnv];
-}
-
-module.exports = buildConfig(env);
